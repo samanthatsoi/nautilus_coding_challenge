@@ -1,6 +1,6 @@
 ## Nautilus Coding Challenge <br />
 by Samantha Tsoi <br />
-Date started: 2/22/2021 <br/>
+Date: 2/22/2021 <br/>
 <br />
 
 
