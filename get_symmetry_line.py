@@ -1,14 +1,107 @@
 # import objects and functions
 from Line import Line
-from computation import calculate_symmetry_cartesian
-from output_options import write_symmetry_to_csv, visualize_symmetry
-
+from computation import calculate_symmetry_cartesian, calculate_reflection_cartesian
+from output_options import write_symmetry_to_csv, visualize_symmetry, visualize_valid_lines, write_valid_lines_csv
+from math import floor, ceil
 
 # current options for coordinate planes
 COORDINATE_PLANE_OPTIONS = {"cartesian"}
 
 
-def get_symmetry_line(points, coordinate_plane="Cartesian", rounding=4, visualize=True, output_directory=None):
+def find_valid_symmetry_lines(points, rounding=3, visualize=True, output_directory=None):
+    '''
+    find lines of symmetry where every point in the input set when reflected across the line has a matching point in the input set
+    :param points:
+    :return:
+    '''
+
+    # get all lines of symmetry first, error checking happens in get_symmetry_lines
+    output_dict, lines_of_symmetry = get_symmetry_lines(points, visualize=False)
+
+    ########################################################
+    ### calculate valid line of symmetry ###################
+    ########################################################
+
+    # prepare, get rounded number of the input points to account for errors for comparison
+    t_points = [tuple(t_point) for t_point in points]
+    points_float = [(float(p[0]), float(p[1])) for p in t_points]
+    points_round = [(round(p_float[0], 2), round(p_float[1], 2)) for p_float in points_float]
+
+    # holds output
+    valid_lines_of_sym = []
+    valid_line_eqs = []
+
+    # iterate unique combinations of pairs of points
+    for line in lines_of_symmetry:
+        valid = []
+
+        no_point_combination = 0
+        for point in points:
+            # get the reflected point. if input point has a reflected point, then it could be a valid line
+            reflected_point = calculate_reflection_cartesian(point, line)
+
+            # get floor and ceiling of the calculated point up to 2 decimal places, so we can account rounding error
+            # https://stackoverflow.com/questions/50405017/how-to-round-up-a-number-to-x-decimal-places-in-python
+            floor_x = floor(reflected_point[0] * 100) / 100
+            floor_y = floor(reflected_point[1] * 100) / 100
+            ceil_x = ceil(reflected_point[0] * 100) / 100
+            ceil_y = ceil(reflected_point[1] * 100) / 100
+
+            # if reflected point is also an input
+            if reflected_point in points_round \
+                    or (floor_x, floor_y) in points_round or (ceil_x, ceil_y) in points_round \
+                    or (floor_x, ceil_y) in points_round or (ceil_x, floor_y) in points_round:
+                valid.append(True)
+            no_point_combination += 1
+
+        # if all reflected points are valid, then this is a valid line of symmetry
+        if (len(valid) == no_point_combination):
+            if line.equation not in valid_line_eqs:
+                valid_lines_of_sym.append(line)
+                valid_line_eqs.append(line.equation)
+
+    ########################################################
+    ### ROUNDING RESULTS ###################################
+    ########################################################
+    if rounding:
+        valid_line_eqs_round = []
+        for line_of_symmetry in valid_lines_of_sym:
+            b = line_of_symmetry.get_y_intercept()
+            m = line_of_symmetry.get_slope()
+            # put in string format. if negative, string does not need a '+'
+            if (b == "DNE" or m == "DNE"):
+                line_of_symmetry_output = "x=%s" % line_of_symmetry.get_x_intercept()
+            else:
+                b_round = round(b, rounding)
+                m_round = round(m, rounding)
+                if (b >= 0):
+                    line_of_symmetry_output = "y=%sx+%s" % (m_round, b_round)
+                else:
+                    line_of_symmetry_output = "y=%sx%s" % (m_round, b_round)
+            valid_line_eqs_round.append(line_of_symmetry_output)
+        valid_line_eqs = valid_line_eqs_round
+
+
+
+    ########################################################
+    ### PLOTTING POINTS AND LINES ###################
+    ########################################################
+    new_dir = None
+    # do we want to write out CSV file?
+    if output_directory:
+        new_dir = write_valid_lines_csv(points, valid_line_eqs, output_directory)
+    if visualize:
+        #prepare for function
+        slopes = [line.get_slope() for line in valid_lines_of_sym]
+        y_intercepts = [line.get_y_intercept() for line in valid_lines_of_sym]
+        x_intercepts = [line.get_x_intercept() for line in valid_lines_of_sym]
+
+        visualize_valid_lines(points_round, valid_line_eqs, slopes, y_intercepts, x_intercepts, new_dir)
+
+    return valid_line_eqs
+
+
+def get_symmetry_lines(points, coordinate_plane="Cartesian", rounding=4, visualize=True, output_directory=None):
     '''
     get line(s) of symmetry given list of points, fo each given set of points
 
@@ -61,7 +154,8 @@ def get_symmetry_line(points, coordinate_plane="Cartesian", rounding=4, visualiz
     ### calculate: get a line of symmetry for each point ###
     ########################################################
 
-    lines_of_symmetry = {}
+    lines_of_symmetry_dict = {}
+    all_lines_of_sym = []
     for point_i in range(len(points)):
         next_i = point_i + 1
         for point_j in range(next_i, len(points)):
@@ -72,6 +166,7 @@ def get_symmetry_line(points, coordinate_plane="Cartesian", rounding=4, visualiz
             # calculate
             line_of_symmetry = calculate_symmetry_cartesian(point1, point2)
 
+            all_lines_of_sym.append(line_of_symmetry)
             # what to output
             line_of_symmetry_output = line_of_symmetry.equation
 
@@ -91,7 +186,7 @@ def get_symmetry_line(points, coordinate_plane="Cartesian", rounding=4, visualiz
                         line_of_symmetry_output = "y=%sx%s" % (m_round, b_round)
 
             # add to data structure with all lines
-            lines_of_symmetry[(point1, point2)] = line_of_symmetry_output
+            lines_of_symmetry_dict[(point1, point2)] = line_of_symmetry_output
 
     ##########################
     ### writing out output ###
@@ -100,7 +195,7 @@ def get_symmetry_line(points, coordinate_plane="Cartesian", rounding=4, visualiz
     new_dir = None
     # do we want to write out CSV file?
     if output_directory:
-        new_dir = write_symmetry_to_csv(lines_of_symmetry, output_directory)
+        new_dir = write_symmetry_to_csv(lines_of_symmetry_dict, output_directory)
 
     # do we want to visualize?
     if visualize:
@@ -108,7 +203,7 @@ def get_symmetry_line(points, coordinate_plane="Cartesian", rounding=4, visualiz
         slopes = []
         y_intercepts = []
         x_intercepts = []
-        for line in lines_of_symmetry.values():
+        for line in lines_of_symmetry_dict.values():
             slope = Line(line).get_slope()
             y_intercept = Line(line).get_y_intercept()
             x_intercept = Line(line).get_x_intercept()
@@ -117,6 +212,6 @@ def get_symmetry_line(points, coordinate_plane="Cartesian", rounding=4, visualiz
             x_intercepts.append(x_intercept)
 
         # pass into visualize function
-        visualize_symmetry(lines_of_symmetry, slopes, y_intercepts, x_intercepts, new_dir)
+        visualize_symmetry(lines_of_symmetry_dict, slopes, y_intercepts, x_intercepts, new_dir)
 
-    return lines_of_symmetry
+    return lines_of_symmetry_dict, all_lines_of_sym

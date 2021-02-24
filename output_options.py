@@ -5,6 +5,120 @@ import csv
 from itertools import cycle
 
 
+def visualize_valid_lines(points, lines, slopes, y_intercepts, x_intercepts, output_dir=None):
+    '''
+    visualize points, line(s) of symmetry, and points reflected over line(s) of symmetry
+
+    :param lines_of_symmetry_dict: dictionary outputted by symmetry(), in {((x1,y1), (y1,y2)): line_of_symmetry} format.
+    :param slopes: slopes for each line of symmetry in the values of lines_points
+    :param y_intercepts: y-intercept for each line of symmetry in the values of lines_points
+    :param x_intercepts: x-intercept for each line of symmetry in the values of lines_points
+    :param output_dir: directory to output the resulting figure, if any
+    :return: None
+    '''
+
+    # get min and max of the reflected points and points to set the range of the map
+    x_min = min([float(key_point[0])
+                 for key_point in points])
+    x_max = max([float(key_point[0])
+                 for key_point in points])
+
+    y_min = min([float(key_point[1])
+                 for key_point in points])
+    y_max = max([float(key_point[1])
+                 for key_point in points])
+
+    range_min = min(x_min, y_min)
+    range_max = max(x_max, y_max)
+
+    # indexing for lines, keeping track of which line currently being looked at
+    line_i = 0
+
+    # aggregate dataframe to later plot all points and lines
+    all_points = []
+    all_x_lines = []
+    all_y_lines = []
+    all_lines_of_sym = []
+
+    ########################
+    ### individual plots ###
+    ########################
+
+    for line in lines:
+        m = slopes[line_i]
+        b = y_intercepts[line_i]
+        if (m != "DNE" and b != "DNE"):
+            # extend line pass the range
+            line_x_vals = np.linspace(range_min - 100, range_max + 100, 100)
+            line_y_vals = (m * line_x_vals) + b
+        else:
+            # vertical line
+            line_x_vals = [x_intercepts[line_i]] * 100
+            line_y_vals = np.linspace(range_min - 100, range_max + 100, 100)
+        # adding to aggregate dataframes to later plot all points and lines
+        all_x_lines.append(line_x_vals)
+        all_y_lines.append(line_y_vals)
+        all_lines_of_sym.append(line)
+
+        line_i += 1
+    all_x_vals = []
+    all_y_vals = []
+    for point in points:
+        # x values and y value currently being looked at
+        all_x_vals.append(float(point[0]))
+        all_y_vals.append(float(point[1]))
+
+    # plotting
+    # initializing figure
+    points_str = '__'.join(str(p[0]) + '_' + str(p[1]) for p in points)
+    file_name = "symmetry_%s.png" % (points_str)
+
+    fig = plt.figure(file_name)
+    ax = plt.gca()
+
+    # set limits for display
+    buffer = int((range_max - range_min) / 20)
+    if buffer == 0:
+        buffer = 1
+    plt.xlim([range_min - buffer, range_max + buffer])
+    plt.ylim([range_min - buffer, range_max + buffer])
+
+    # set increments so x and y are on the same scale, integers so it's cleaner
+    plt.xticks(np.arange(range_min - buffer, range_max + buffer, (range_max - range_min) / 10))
+    plt.yticks(np.arange(range_min - buffer, range_max + buffer, (range_max - range_min) / 10))
+
+    # labeling the axes
+    plt.xlabel("x")
+    plt.ylabel("y")
+
+    # draw x- and y- axis
+    ax.axhline(y=0, color='k')
+    ax.axvline(x=0, color='k')
+
+    # plot line and points
+    for i in range(len(all_x_lines)):
+        plt.plot(all_x_lines[i], all_y_lines[i], '--', color="green", label=lines[i])
+    plt.scatter(all_x_vals, all_y_vals, c="orange", marker='o', label="Given Points")
+
+    # annotate the points
+    for point_xy in zip(all_x_vals, all_y_vals):
+        ax.annotate('(%s, %s)' % point_xy, xy=point_xy, textcoords='data')
+
+    # custom plot functions
+    plt.title("valid lines %r" % (points,))
+    plt.grid()
+    plt.legend()
+
+    # save figure
+    if output_dir:
+        plt.savefig(os.path.join(output_dir, file_name))
+
+    plt.show()
+    plt.close()
+
+    return
+
+
 def visualize_symmetry(lines_of_symmetry_dict, slopes, y_intercepts, x_intercepts, output_dir=None):
     '''
     visualize points, line(s) of symmetry, and points reflected over line(s) of symmetry
@@ -77,12 +191,23 @@ def visualize_symmetry(lines_of_symmetry_dict, slopes, y_intercepts, x_intercept
         ax = plt.gca()
 
         # set limits for display
-        plt.xlim([range_min - 20, range_max + 20])
-        plt.ylim([range_min - 20, range_max + 20])
+        buffer = int((range_max - range_min) / 20)
+        if buffer == 0:
+            buffer = 1
+        plt.xlim([range_min - buffer, range_max + buffer])
+        plt.ylim([range_min - buffer, range_max + buffer])
 
         # set increments so x and y are on the same scale, integers so it's cleaner
-        plt.xticks(np.arange(range_min, range_max, int((range_max - range_min) / 10)))
-        plt.yticks(np.arange(range_min, range_max, int((range_max - range_min) / 10)))
+        plt.xticks(np.arange(range_min - buffer, range_max + buffer, (range_max - range_min) / 10))
+        plt.yticks(np.arange(range_min - buffer, range_max + buffer, (range_max - range_min) / 10))
+
+        # labeling the axes
+        plt.xlabel("x")
+        plt.ylabel("y")
+
+        # draw x- and y- axis
+        ax.axhline(y=0, color='k')
+        ax.axvline(x=0, color='k')
 
         # plot line and points
         plt.plot(line_x_vals, line_y_vals, '--', color="green", label=line_of_symmetry)
@@ -112,12 +237,23 @@ def visualize_symmetry(lines_of_symmetry_dict, slopes, y_intercepts, x_intercept
     ax = plt.gca()
 
     # set limits for display
-    plt.xlim([range_min - 20, range_max + 20])
-    plt.ylim([range_min - 20, range_max + 20])
+    buffer = int((range_max - range_min) / 20)
+    if buffer == 0:
+        buffer = 1
+    plt.xlim([range_min - buffer, range_max + buffer])
+    plt.ylim([range_min - buffer, range_max + buffer])
 
     # set increments so x and y are on the same scale, integers so it's cleaner
-    plt.xticks(np.arange(range_min, range_max, int((range_max - range_min) / 10)))
-    plt.yticks(np.arange(range_min, range_max, int((range_max - range_min) / 10)))
+    plt.xticks(np.arange(range_min - buffer, range_max + buffer, (range_max - range_min) / 10))
+    plt.yticks(np.arange(range_min - buffer, range_max + buffer, (range_max - range_min) / 10))
+
+    # labeling the axes
+    plt.xlabel("x")
+    plt.ylabel("y")
+
+    # draw x- and y- axis
+    ax.axhline(y=0, color='k')
+    ax.axvline(x=0, color='k')
 
     # get all the x and ys in separate structure
     all_x_points = []
@@ -218,12 +354,23 @@ def visualize_reflection(points, all_reflected_points, slopes, y_intercepts, x_i
         ax = plt.gca()
 
         # set limits for display
-        plt.xlim([range_min - 20, range_max + 20])
-        plt.ylim([range_min - 20, range_max + 20])
+        buffer = int((range_max - range_min) / 20)
+        if buffer == 0:
+            buffer = 1
+        plt.xlim([range_min - buffer, range_max + buffer])
+        plt.ylim([range_min - buffer, range_max + buffer])
 
-        # set increments so x and y are on the same scale
-        plt.xticks(np.arange(range_min, range_max, (range_max - range_min) / 10))
-        plt.yticks(np.arange(range_min, range_max, (range_max - range_min) / 10))
+        # set increments so x and y are on the same scale, integers so it's cleaner
+        plt.xticks(np.arange(range_min - buffer, range_max + buffer, (range_max - range_min) / 10))
+        plt.yticks(np.arange(range_min - buffer, range_max + buffer, (range_max - range_min) / 10))
+
+        # labeling the axes
+        plt.xlabel("x")
+        plt.ylabel("y")
+
+        # draw x- and y- axis
+        ax.axhline(y=0, color='k')
+        ax.axvline(x=0, color='k')
 
         color_range = np.arange(len(point_x_vals))
 
@@ -255,6 +402,36 @@ def visualize_reflection(points, all_reflected_points, slopes, y_intercepts, x_i
 
         plt.show()
         plt.close()
+
+
+def write_valid_lines_csv(points, lines, output_directory):
+    '''
+    write out points, and their line(s) of symmetry into a CSV
+
+    :param lines_of_symmetry_dict: dictionary outputted by symmetry(), in {((x1,y1), (y1,y2)): line_of_symmetry} format.
+    :param output_directory: directory path to output CSV
+    :return: path in which the CSV is outputted
+    '''
+
+    # create a new directory for results
+    new_dir = os.path.join(output_directory, "valid_symmetry")
+    if not os.path.isdir(new_dir):
+        os.makedirs(new_dir)
+
+    # write out dictionary into CSV
+    with open(os.path.join(new_dir, 'valid_symmetry.csv'), 'w') as f:
+        # create writer and define column names
+        writer = csv.DictWriter(f, fieldnames=["given_points", "line_of_symmetry"])
+        writer.writeheader()
+
+        if not lines:
+            writer.writerow({"given_points": points, "line_of_symmetry": "None"})
+        else:
+            # write out line by line
+            for line in lines:
+                writer.writerow({"given_points": points, "line_of_symmetry": line})
+
+    return new_dir
 
 
 def write_symmetry_to_csv(lines_of_symmetry_dict, output_directory):
