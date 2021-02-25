@@ -5,10 +5,10 @@ Date: 2/22/2021 <br/>
 
 
 #### Summary: <br />
-1. Find line(s) of symmetry given a set of points on an infinite plane
+1. Find all possible line(s) of symmetry given a set of points on an infinite plane, and the valid lines of symmetry that correspond with the entire set of the input points.
 2. Find reflected point(s) given point(s) and line(s) of symmetry, i.e. "x-axis", "y-axis", "y=-34x-29.4"
 
-Results are outputted in ../symmetry/ or ../reflection/, respectively, with the option to visualize the solution and write out the CSVs containing the resulting point(s) and/or line(s).
+Results are outputted in ../symmetry/, ../valid_symmetry/, or ../reflection/, respectively, with the option to visualize the solution and write out the CSVs containing the resulting point(s) and/or line(s).
 <br />
 
 
@@ -17,6 +17,7 @@ Results are outputted in ../symmetry/ or ../reflection/, respectively, with the 
 #### Files: <br />
 - get_symmetry_line.py : Python code
   + holds get_symmetry_line(), where it calculates line(s) of symmetry given list of point(s), for each unique combination of given set of points. There are options to specify coordinate plane, the number of decimals to round for output, visualize results, and output results to a directory.
+  + holds find_valid_symmetry_lines(), where it finds valid lines of symmetry that correspond with the entire set of input points. Returns empty list if none found. There are options to specify coordinate plane, the number of decimals to round for output, visualize results, and output results to a directory.
 - get_reflection_point.py : Python code
   + holds get_reflection_point(), where it calculates point(s) reflected given line(s) of symmetry and given point(s), for each unique combination of given points and lines. There are options to specify coordinate plane, the number of decimals to round for output, visualize results, and output results to a directory.
 - computation.py : Python code
